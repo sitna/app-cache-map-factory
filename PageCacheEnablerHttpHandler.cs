@@ -39,6 +39,12 @@ namespace AppCacheFactory
             {
                 targetUrl = string.Format("{0}://{1}:{2}/", request.Url.Scheme, request.Url.Host, request.Url.Port);
             }
+            
+            string manifestPath = WebConfigurationManager.AppSettings["AppCacheFactory.ManifestPath"];
+            if (manifestPath == null)
+            {
+                manifestPath = "manifest";
+            }
 
             #region eliminación de parámetros de querystring que están dirigidos a este handler
             Regex schemaRe = new Regex(offlineSchemaKey + "=[^&]*", RegexOptions.IgnoreCase);
@@ -89,11 +95,11 @@ namespace AppCacheFactory
             {
                 if (manifestPart.Length == 0)
                 {
-                    newHtmlPart = htmlPart.Replace(">", string.Format(" manifest=\"manifest?{0}\">", offlineSchemaValue));
+                    newHtmlPart = htmlPart.Replace(">", string.Format(" manifest=\"{0}?{1}\">", manifestPath, offlineSchemaValue));
                 }
                 else
                 {
-                    newHtmlPart = htmlPart.Replace(manifestPart, string.Format("manifest=\"manifest?{0}\"", request.QueryString[offlineSchemaKey]));
+                    newHtmlPart = htmlPart.Replace(manifestPart, string.Format("manifest=\"{0}?{1}\"", manifestPath, request.QueryString[offlineSchemaKey]));
                 }
                 responseText = responseText.Replace(htmlPart, newHtmlPart);
             }

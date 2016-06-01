@@ -50,10 +50,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ITileListComposer.cs" />
     <Compile Include="ManifestHttpHandler.cs" />
     <Compile Include="PageCacheEnablerHttpHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WMTSLayerDefinition.cs" />
     <Compile Include="TileMatrixLimits.cs" />
+    <Compile Include="OfflineMapDefinition.cs" />
     <Compile Include="WMTSRequestData.cs" />
   </ItemGroup>
   <ItemGroup>

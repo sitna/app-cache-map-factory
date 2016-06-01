@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace AppCacheFactory
 {
-    public class WMTSRequestData
+    public class WMTSRequestData : ITileListComposer
     {
-        public string MapName { get; set; }
         public string Url { get; set; }
         public TileMatrixLimits[] TileMatrixLimits { get; set; }
 

@@ -21,7 +21,7 @@ namespace AppCacheFactory
 
             string manifestTemplateKey = "AppCacheFactory.ManifestTemplate";
             string manifestTemplate = context.Application[manifestTemplateKey] as string;
-            string manifestString = null;
+            StringBuilder tileListText = new StringBuilder();
 
             if (manifestTemplate == null)
             {
@@ -29,7 +29,26 @@ namespace AppCacheFactory
                 if (manifestPath != null)
                 {
                     System.IO.StreamReader sr = System.IO.File.OpenText(context.Server.MapPath(manifestPath));
-                    manifestTemplate = sr.ReadToEnd();
+                    if (context.Request.Url.Scheme == "https")
+                    {
+                        string line;
+                        StringBuilder sb = new StringBuilder();
+                        do
+                        {
+                            line = sr.ReadLine();
+                            if (line != null && line.StartsWith("http://"))
+                            {
+                                line = line.Replace("http://", "https://");
+                            }
+                            sb.AppendLine(line);
+                        }
+                        while (line != null);
+                        manifestTemplate = sb.ToString();
+                    }
+                    else
+                    {
+                        manifestTemplate = sr.ReadToEnd();
+                    }
                     sr.Close();
 
                     manifestTemplate = manifestTemplate.Replace("NETWORK:", "{0}\n\nNETWORK:");
@@ -57,9 +76,14 @@ namespace AppCacheFactory
                 if (deleteCookie != null && context.Server.UrlDecode(deleteCookie.Value) == encodedObjectString)
                 {
                     // El manifiesto está marcado para borrar: Devolvemos un código HTTP 410 (recurso ya no existe) para que en cliente se borre la cache
+                    context.Response.Cookies.Remove(cookieKey);
+                    deleteCookie.Expires = DateTime.Now.AddDays(-10);
+                    deleteCookie.Value = null;
+                    context.Response.SetCookie(deleteCookie); 
                     context.Response.StatusCode = 410;
                     context.Response.End();
                 }
+
                 string objectString = null;
                 try
                 {
@@ -73,32 +97,34 @@ namespace AppCacheFactory
                 {
                     JsonReader jsonReader = new JsonTextReader(new System.IO.StringReader(objectString));
                     JsonSerializer jsonSerializer = new JsonSerializer();
-                    WMTSRequestData[] wmtsRequestDataList = null;
-                    
+
+                    // Nueva definición corta, exige lectura de capabilities desde servidor
+                    OfflineMapDefinition offlineMap = null;
                     try
                     {
-                        wmtsRequestDataList = jsonSerializer.Deserialize<WMTSRequestData[]>(jsonReader);
-                    }
-                    catch (JsonReaderException e)
-                    {
-
-                    }
-                    if (wmtsRequestDataList != null)
-                    {
-                        StringBuilder tileListText = new StringBuilder();
-                        for (int i = 0; i < wmtsRequestDataList.Length; i++)
+                        offlineMap = jsonSerializer.Deserialize<OfflineMapDefinition>(jsonReader);
+                        if (offlineMap != null)
                         {
-                            tileListText.AppendLine(string.Join("\n", wmtsRequestDataList[i].GetRequestList()));
+                            tileListText.AppendLine(string.Join("\n", offlineMap.GetRequestList()));
                         }
-                        manifestString = manifestTemplate.Replace("{0}", tileListText.ToString());
+                    }
+                    catch (JsonSerializationException jse)
+                    {
+                        // Antigua definición larga
+                        WMTSRequestData[] wmtsRequestDataList = null;
+
+                        wmtsRequestDataList = jsonSerializer.Deserialize<WMTSRequestData[]>(jsonReader);
+                        if (wmtsRequestDataList != null)
+                        {
+                            for (int i = 0; i < wmtsRequestDataList.Length; i++)
+                            {
+                                tileListText.AppendLine(string.Join("\n", wmtsRequestDataList[i].GetRequestList()));
+                            }
+                        }
                     }
                 }
             }
-            if (manifestString == null)
-            {
-                manifestString = manifestTemplate.Replace("{0}", "");
-            }
-            context.Response.Write(manifestString);
+            context.Response.Write(manifestTemplate.Replace("{0}", tileListText.ToString()));
             context.Response.End();
         }
     }
