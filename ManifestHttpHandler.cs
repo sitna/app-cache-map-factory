@@ -60,7 +60,7 @@ namespace AppCacheFactory
             string queryString = context.Request.Url.Query;
             if (queryString.Length > 0)
             {
-                string encodedObjectString = queryString.Substring(1);
+                string encodedObjectString = context.Server.UrlDecode(queryString.Substring(1));
                 string cookieKey = WebConfigurationManager.AppSettings["AppCacheFactory.Keys.Cookie"];
                 if (cookieKey == null)
                 {
@@ -91,7 +91,7 @@ namespace AppCacheFactory
                 }
                 catch (FormatException e)
                 {
-
+                    objectString = context.Server.UrlDecode(encodedObjectString);
                 }
                 if (objectString != null)
                 {
