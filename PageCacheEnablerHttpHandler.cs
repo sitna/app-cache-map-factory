@@ -27,7 +27,7 @@ namespace AppCacheFactory
             {
                 offlineSchemaKey = "offline-schema";
             }
-            string offlineSchemaValue = request.QueryString[offlineSchemaKey];
+            string offlineSchemaValue = context.Server.UrlDecode(System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(request.QueryString[offlineSchemaKey])));
             string mapNameKey = WebConfigurationManager.AppSettings["AppCacheFactory.Keys.MapName"];
             if (mapNameKey == null)
             {
@@ -95,11 +95,11 @@ namespace AppCacheFactory
             {
                 if (manifestPart.Length == 0)
                 {
-                    newHtmlPart = htmlPart.Replace(">", string.Format(" manifest=\"{0}?{1}\">", manifestPath, offlineSchemaValue));
+                    newHtmlPart = htmlPart.Replace(">", string.Format(" manifest='{0}?{1}'>", manifestPath, offlineSchemaValue));
                 }
                 else
                 {
-                    newHtmlPart = htmlPart.Replace(manifestPart, string.Format("manifest=\"{0}?{1}\"", manifestPath, request.QueryString[offlineSchemaKey]));
+                    newHtmlPart = htmlPart.Replace(manifestPart, string.Format("manifest='{0}?{1}'", manifestPath, offlineSchemaValue));
                 }
                 responseText = responseText.Replace(htmlPart, newHtmlPart);
             }
