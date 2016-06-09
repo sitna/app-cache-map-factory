@@ -14,7 +14,9 @@ namespace AppCacheFactory
     {
         public double[] BBox { get; set; }
         public double Res { get; set; }
-        public string[] Urls { get; set; }
+        public string[] URL { get; set; }
+        public string[] TMS { get; set; }
+        public string[] Format { get; set; }
         public WMTSLayerDefinition[] Layers { get; set; }
 
         public List<string> GetRequestList()
@@ -27,7 +29,7 @@ namespace AppCacheFactory
                 {
                     WMTSLayerDefinition layer = Layers[i];
                     XmlDocument xmlDoc;
-                    string capabilitiesUrl = Urls[layer.UrlIdx] + "/1.0.0/WMTSCapabilities.xml";
+                    string capabilitiesUrl = URL[layer.UrlIdx] + "/1.0.0/WMTSCapabilities.xml";
                     if (!capabilities.ContainsKey(capabilitiesUrl))
                     {
                         xmlDoc = new XmlDocument();
@@ -42,17 +44,18 @@ namespace AppCacheFactory
                     var xnm = new XmlNamespaceManager(xmlDoc.NameTable);
                     xnm.AddNamespace("ns", "http://www.opengis.net/wmts/1.0");
                     xnm.AddNamespace("ows", "http://www.opengis.net/ows/1.1");
-                    XmlNode layerNode = xmlDoc.SelectSingleNode(string.Format("/ns:Capabilities/ns:Contents/ns:Layer[ows:Identifier='{0}']", layer.LayerId), xnm);
+                    XmlNode layerNode = xmlDoc.SelectSingleNode(string.Format("/ns:Capabilities/ns:Contents/ns:Layer[ows:Identifier='{0}']", layer.Id), xnm);
 
                     if (layerNode != null)
                     {
-                        XmlNode urlPatternNode = layerNode.SelectSingleNode(string.Format("ns:ResourceURL[@format='{0}'][@resourceType='tile']", layer.Format), xnm);
+                        XmlNode urlPatternNode = layerNode.SelectSingleNode(string.Format("ns:ResourceURL[@format='{0}'][@resourceType='tile']", Format[layer.FormatIdx]), xnm);
                         string urlPattern = null;
                         if (urlPatternNode != null)
                         {
                             urlPattern = urlPatternNode.Attributes["template"].Value;
-                            XmlNodeList tmlNodes = layerNode.SelectNodes(string.Format("ns:TileMatrixSetLink[ns:TileMatrixSet='{0}']/ns:TileMatrixSetLimits/ns:TileMatrixLimits", layer.TMS), xnm);
-                            XmlNodeList tmNodes = xmlDoc.SelectNodes(string.Format("/ns:Capabilities/ns:Contents/ns:TileMatrixSet[ows:Identifier='{0}']/ns:TileMatrix", layer.TMS), xnm);
+                            var tms = TMS[layer.TmsIdx];
+                            XmlNodeList tmlNodes = layerNode.SelectNodes(string.Format("ns:TileMatrixSetLink[ns:TileMatrixSet='{0}']/ns:TileMatrixSetLimits/ns:TileMatrixLimits", tms), xnm);
+                            XmlNodeList tmNodes = xmlDoc.SelectNodes(string.Format("/ns:Capabilities/ns:Contents/ns:TileMatrixSet[ows:Identifier='{0}']/ns:TileMatrix", tms), xnm);
                             XmlNode tmNode;
                             for (int j = 0; j < tmNodes.Count; j++)
                             {

@@ -9,8 +9,8 @@ namespace AppCacheFactory
     public class WMTSLayerDefinition
     {
         public int UrlIdx { get; set; }
-        public string LayerId { get; set; }
-        public string Format { get; set; }
-        public string TMS { get; set; }
+        public string Id { get; set; }
+        public int TmsIdx { get; set; }
+        public int FormatIdx { get; set; }
     }
 }
