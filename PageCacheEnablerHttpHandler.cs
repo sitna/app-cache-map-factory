@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using Newtonsoft.Json;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -22,12 +23,12 @@ namespace AppCacheFactory
         {
             HttpRequest request = context.Request;
 
-            string offlineSchemaKey = WebConfigurationManager.AppSettings["AppCacheFactory.Keys.OfflineSchema"];
-            if (offlineSchemaKey == null)
+            string mapDefKey = WebConfigurationManager.AppSettings["AppCacheFactory.Keys.MapDefinition"];
+            if (mapDefKey == null)
             {
-                offlineSchemaKey = "offline-schema";
+                mapDefKey = "map-def";
             }
-            string offlineSchemaValue = context.Server.UrlDecode(System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(request.QueryString[offlineSchemaKey])));
+
             string mapNameKey = WebConfigurationManager.AppSettings["AppCacheFactory.Keys.MapName"];
             if (mapNameKey == null)
             {
@@ -47,7 +48,7 @@ namespace AppCacheFactory
             }
 
             #region eliminación de parámetros de querystring que están dirigidos a este handler
-            Regex schemaRe = new Regex(offlineSchemaKey + "=[^&]*", RegexOptions.IgnoreCase);
+            Regex schemaRe = new Regex(mapDefKey + "=[^&]*", RegexOptions.IgnoreCase);
             Regex nameRe = new Regex(mapNameKey + "=[^&]*", RegexOptions.IgnoreCase);
             string query = request.Url.Query
                 .Replace(schemaRe.Match(request.Url.Query).ToString(), "")
@@ -93,15 +94,45 @@ namespace AppCacheFactory
             #region inserción de atributo manifest
             if (htmlPart.Length > 0)
             {
-                if (manifestPart.Length == 0)
+                string mapDefString = null;
+                try
                 {
-                    newHtmlPart = htmlPart.Replace(">", string.Format(" manifest='{0}?{1}'>", manifestPath, offlineSchemaValue));
+                    mapDefString = Encoding.UTF8.GetString(Convert.FromBase64String(request.QueryString[mapDefKey]));
                 }
-                else
+                catch (FormatException e)
                 {
-                    newHtmlPart = htmlPart.Replace(manifestPart, string.Format("manifest='{0}?{1}'", manifestPath, offlineSchemaValue));
+                    mapDefString = context.Server.UrlDecode(request.QueryString[mapDefKey]);
                 }
-                responseText = responseText.Replace(htmlPart, newHtmlPart);
+                if (mapDefString != null)
+                {
+                    JsonReader jsonReader = new JsonTextReader(new System.IO.StringReader(mapDefString));
+                    JsonSerializer jsonSerializer = new JsonSerializer();
+
+                    // Nueva definición corta, exige lectura de capabilities desde servidor
+                    ITileListComposer offlineMap = null;
+                    try
+                    {
+                        offlineMap = jsonSerializer.Deserialize<OfflineMapDefinition>(jsonReader);
+                    }
+                    catch (JsonSerializationException jse)
+                    {
+                        offlineMap = jsonSerializer.Deserialize<WMTSRequestData>(jsonReader);
+                    }
+
+                    if (offlineMap != null)
+                    {
+                        string qs = offlineMap.ToQueryString();
+                        if (manifestPart.Length == 0)
+                        {
+                            newHtmlPart = htmlPart.Replace(">", string.Format(" manifest='{0}?{1}'>", manifestPath, qs));
+                        }
+                        else
+                        {
+                            newHtmlPart = htmlPart.Replace(manifestPart, string.Format("manifest='{0}?{1}'", manifestPath, qs));
+                        }
+                    }
+                    responseText = responseText.Replace(htmlPart, newHtmlPart);
+                }
             }
             #endregion
 

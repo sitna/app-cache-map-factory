@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using System.Web.Configuration;
+using Newtonsoft.Json;
 
 namespace AppCacheFactory
 {
@@ -60,7 +60,9 @@ namespace AppCacheFactory
             string queryString = context.Request.Url.Query;
             if (queryString.Length > 0)
             {
-                string encodedObjectString = context.Server.UrlDecode(queryString.Substring(1));
+                ITileListComposer offlineMap = new OfflineMapDefinition();
+                offlineMap.FromQueryString(context.Request.QueryString);
+
                 string cookieKey = WebConfigurationManager.AppSettings["AppCacheFactory.Keys.Cookie"];
                 if (cookieKey == null)
                 {
@@ -71,59 +73,36 @@ namespace AppCacheFactory
                     cookieKey += "delete";
                 }
                 System.Web.HttpCookie deleteCookie = context.Request.Cookies.Get(cookieKey);
-                string cachedTime = context.Cache.Get(encodedObjectString) as string;
 
-                if (deleteCookie != null && context.Server.UrlDecode(deleteCookie.Value) == encodedObjectString)
+                if (deleteCookie != null)
                 {
-                    // El manifiesto está marcado para borrar: Devolvemos un código HTTP 410 (recurso ya no existe) para que en cliente se borre la cache
-                    context.Response.Cookies.Remove(cookieKey);
-                    deleteCookie.Expires = DateTime.Now.AddDays(-10);
-                    deleteCookie.Value = null;
-                    context.Response.SetCookie(deleteCookie); 
-                    context.Response.StatusCode = 410;
-                    context.Response.End();
-                }
-
-                string objectString = null;
-                try
-                {
-                    objectString = Encoding.UTF8.GetString(Convert.FromBase64String(encodedObjectString));
-                }
-                catch (FormatException e)
-                {
-                    objectString = context.Server.UrlDecode(encodedObjectString);
-                }
-                if (objectString != null)
-                {
-                    JsonReader jsonReader = new JsonTextReader(new System.IO.StringReader(objectString));
+                    string deleteCookieValue = context.Server.UrlDecode(deleteCookie.Value);
+                    JsonReader jsonReader = new JsonTextReader(new System.IO.StringReader(deleteCookieValue));
                     JsonSerializer jsonSerializer = new JsonSerializer();
 
-                    // Nueva definición corta, exige lectura de capabilities desde servidor
-                    OfflineMapDefinition offlineMap = null;
-                    try
+                    ITileListComposer offlineMapToDelete = null;
+                    if (offlineMap as OfflineMapDefinition != null)
                     {
-                        offlineMap = jsonSerializer.Deserialize<OfflineMapDefinition>(jsonReader);
-                        if (offlineMap != null)
-                        {
-                            tileListText.AppendLine(string.Join("\n", offlineMap.GetRequestList()));
-                        }
+                        offlineMapToDelete = jsonSerializer.Deserialize<OfflineMapDefinition>(jsonReader);
                     }
-                    catch (JsonSerializationException jse)
+                    else if (offlineMap as WMTSRequestData != null) {
+                        offlineMapToDelete = jsonSerializer.Deserialize<WMTSRequestData>(jsonReader);
+                    }
+                    if (offlineMap.Equals(offlineMapToDelete))
                     {
-                        // Antigua definición larga
-                        WMTSRequestData[] wmtsRequestDataList = null;
-
-                        wmtsRequestDataList = jsonSerializer.Deserialize<WMTSRequestData[]>(jsonReader);
-                        if (wmtsRequestDataList != null)
-                        {
-                            for (int i = 0; i < wmtsRequestDataList.Length; i++)
-                            {
-                                tileListText.AppendLine(string.Join("\n", wmtsRequestDataList[i].GetRequestList()));
-                            }
-                        }
+                        // El manifiesto está marcado para borrar: Devolvemos un código HTTP 410 (recurso ya no existe) para que en cliente se borre la cache
+                        context.Response.Cookies.Remove(cookieKey);
+                        deleteCookie.Expires = DateTime.Now.AddDays(-10);
+                        deleteCookie.Value = null;
+                        context.Response.SetCookie(deleteCookie);
+                        context.Response.StatusCode = 410;
+                        context.Response.End();
                     }
                 }
+
+                tileListText.AppendLine(string.Join("\n", offlineMap.GetRequestList()));
             }
+
             context.Response.Write(manifestTemplate.Replace("{0}", tileListText.ToString()));
             context.Response.End();
         }

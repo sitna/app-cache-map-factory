@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -48,7 +49,7 @@ namespace AppCacheFactory
 
                     if (layerNode != null)
                     {
-                        XmlNode urlPatternNode = layerNode.SelectSingleNode(string.Format("ns:ResourceURL[@format='{0}'][@resourceType='tile']", Format[layer.FormatIdx]), xnm);
+                        XmlNode urlPatternNode = layerNode.SelectSingleNode(string.Format("ns:ResourceURL[@format='image/{0}'][@resourceType='tile']", Format[layer.FormatIdx]), xnm);
                         string urlPattern = null;
                         if (urlPatternNode != null)
                         {
@@ -123,6 +124,50 @@ namespace AppCacheFactory
             result[1] = nMin;
             result[2] = mMax;
             result[3] = nMax;
+            return result;
+        }
+
+        private string[] EscapeUriStringArray(string[] a)
+        {
+            return a.Select(x => Uri.EscapeUriString(x)).ToArray();
+        }
+
+        public string ToQueryString()
+        {
+            StringBuilder qs = new StringBuilder();
+            qs.AppendFormat("B={0}&R={1}&U={2}&T={3}&F={4}&L={5}", 
+                string.Join(",", BBox.Select(x => x.ToString(CultureInfo.InvariantCulture)).ToArray()), 
+                Res.ToString(CultureInfo.InvariantCulture),
+                string.Join(",", EscapeUriStringArray(URL)),
+                string.Join(",", EscapeUriStringArray(TMS)),
+                string.Join(",", EscapeUriStringArray(Format)),
+                string.Join(",", Layers.Select(x => string.Format("u-{0}_i-{1}_t-{2}_f-{3}", x.UrlIdx, x.Id, x.TmsIdx, x.FormatIdx)).ToArray()));
+            return qs.ToString();
+        }
+
+        public void FromQueryString(NameValueCollection queryString)
+        {
+            BBox = queryString["B"].Split(',').Select(x => Convert.ToDouble(x, CultureInfo.InvariantCulture)).ToArray();
+            Res = Convert.ToDouble(queryString["R"], CultureInfo.InvariantCulture);
+            URL = queryString["U"].Split(',');
+            TMS = queryString["T"].Split(',');
+            Format = queryString["F"].Split(',');
+            Layers = queryString["L"].Split(',').Select(x => WMTSLayerDefinition.FromQueryStringPart(x)).ToArray();
+        }
+
+        public override bool Equals(object other)
+        {
+            bool result = false;
+            OfflineMapDefinition theOther = other as OfflineMapDefinition;
+            if (theOther != null)
+            {
+                result = BBox.SequenceEqual(theOther.BBox) &&
+                    Res == theOther.Res &&
+                    URL.SequenceEqual(theOther.URL) &&
+                    TMS.SequenceEqual(theOther.TMS) &&
+                    Format.SequenceEqual(theOther.Format) &&
+                    Layers.SequenceEqual(theOther.Layers);
+            }
             return result;
         }
     }

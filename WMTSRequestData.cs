@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Collections.Specialized;
+using Newtonsoft.Json;
 
 namespace AppCacheFactory
 {
@@ -29,6 +31,21 @@ namespace AppCacheFactory
                 }
             }
             return result;
+        }
+
+        public string ToQueryString()
+        {
+            return "M=" + Uri.EscapeUriString(JsonConvert.SerializeObject(this));
+        }
+
+        public void FromQueryString(NameValueCollection queryString)
+        {
+            WMTSRequestData qsObject = null;
+            JsonReader jsonReader = new JsonTextReader(new System.IO.StringReader(queryString["M"]));
+            JsonSerializer jsonSerializer = new JsonSerializer();
+            qsObject = jsonSerializer.Deserialize<WMTSRequestData>(jsonReader);
+            Url = qsObject.Url;
+            TileMatrixLimits = qsObject.TileMatrixLimits;
         }
     }
 }
