@@ -102,9 +102,9 @@ namespace AppCacheFactory
             int matrixHeight = Convert.ToInt32(tmNode.SelectSingleNode("ns:MatrixHeight", xnm).InnerText);
 
             int mMin = Convert.ToInt32(Math.Floor((BBox[0] - origin[0]) / xStep));
-            int nMin = Convert.ToInt32(Math.Floor((origin[1] - BBox[1]) / yStep));
+            int nMin = Convert.ToInt32(Math.Floor((origin[1] - BBox[3]) / yStep));
             int mMax = Convert.ToInt32(Math.Floor((BBox[2] - origin[0]) / xStep));
-            int nMax = Convert.ToInt32(Math.Floor((origin[1] - BBox[3]) / yStep));
+            int nMax = Convert.ToInt32(Math.Floor((origin[1] - BBox[1]) / yStep));
 
             mMax = Math.Min(mMax, mMin + matrixWidth);
             nMax = Math.Min(nMax, nMin + matrixHeight);
