@@ -62,15 +62,18 @@ namespace AppCacheFactory
                             {
                                 tmNode = tmNodes[j];
                                 int[] indexRange = GetIndexRange(tmNode, tmlNodes, xnm);
-                                string identifier = tmNode.SelectSingleNode("ows:Identifier", xnm).InnerText;
-                                for (int x = indexRange[0]; x <= indexRange[2]; x++)
+                                if (indexRange != null)
                                 {
-                                    for (int y = indexRange[1]; y <= indexRange[3]; y++)
+                                    string identifier = tmNode.SelectSingleNode("ows:Identifier", xnm).InnerText;
+                                    for (int x = indexRange[0]; x <= indexRange[2]; x++)
                                     {
-                                        result.Add(urlPattern
-                                        .Replace("{TileMatrix}", identifier)
-                                        .Replace("{TileCol}", x.ToString())
-                                        .Replace("{TileRow}", y.ToString()));
+                                        for (int y = indexRange[1]; y <= indexRange[3]; y++)
+                                        {
+                                            result.Add(urlPattern
+                                            .Replace("{TileMatrix}", identifier)
+                                            .Replace("{TileCol}", x.ToString())
+                                            .Replace("{TileRow}", y.ToString()));
+                                        }
                                     }
                                 }
                             }
@@ -83,7 +86,7 @@ namespace AppCacheFactory
 
         protected int[] GetIndexRange(XmlNode tmNode, XmlNodeList tmlNodes, XmlNamespaceManager xnm)
         {
-            int[] result = new int[4];
+            int[] result = null;
             string identifier = tmNode.SelectSingleNode("ows:Identifier", xnm).InnerText;
 
             string[] topLeftCorner = tmNode.SelectSingleNode("ns:TopLeftCorner", xnm).InnerText.Split(' ');
@@ -95,35 +98,39 @@ namespace AppCacheFactory
             int tileWidth = Convert.ToInt32(tmNode.SelectSingleNode("ns:TileWidth", xnm).InnerText);
             int tileHeight = Convert.ToInt32(tmNode.SelectSingleNode("ns:TileHeight", xnm).InnerText);
             double resolution = 0.00028 * scaleDenominator; // OGC assumes 0.28 mm / pixel
-            double xStep = resolution * tileWidth;
-            double yStep = resolution * tileHeight;
-
-            int matrixWidth = Convert.ToInt32(tmNode.SelectSingleNode("ns:MatrixWidth", xnm).InnerText);
-            int matrixHeight = Convert.ToInt32(tmNode.SelectSingleNode("ns:MatrixHeight", xnm).InnerText);
-
-            int mMin = Convert.ToInt32(Math.Floor((BBox[0] - origin[0]) / xStep));
-            int nMin = Convert.ToInt32(Math.Floor((origin[1] - BBox[3]) / yStep));
-            int mMax = Convert.ToInt32(Math.Floor((BBox[2] - origin[0]) / xStep));
-            int nMax = Convert.ToInt32(Math.Floor((origin[1] - BBox[1]) / yStep));
-
-            mMax = Math.Min(mMax, mMin + matrixWidth);
-            nMax = Math.Min(nMax, nMin + matrixHeight);
-
-            foreach (XmlNode tmlNode in tmlNodes)
+            if (resolution >= Res)
             {
-                if (tmlNode.SelectSingleNode("ns:TileMatrix", xnm).InnerText == identifier)
+                result = new int[4];
+                double xStep = resolution * tileWidth;
+                double yStep = resolution * tileHeight;
+
+                int matrixWidth = Convert.ToInt32(tmNode.SelectSingleNode("ns:MatrixWidth", xnm).InnerText);
+                int matrixHeight = Convert.ToInt32(tmNode.SelectSingleNode("ns:MatrixHeight", xnm).InnerText);
+
+                int mMin = Convert.ToInt32(Math.Floor((BBox[0] - origin[0]) / xStep));
+                int nMin = Convert.ToInt32(Math.Floor((origin[1] - BBox[3]) / yStep));
+                int mMax = Convert.ToInt32(Math.Floor((BBox[2] - origin[0]) / xStep));
+                int nMax = Convert.ToInt32(Math.Floor((origin[1] - BBox[1]) / yStep));
+
+                mMax = Math.Min(mMax, mMin + matrixWidth);
+                nMax = Math.Min(nMax, nMin + matrixHeight);
+
+                foreach (XmlNode tmlNode in tmlNodes)
                 {
-                    mMin = Math.Max(Convert.ToInt32(tmlNode.SelectSingleNode("ns:MinTileCol", xnm).InnerText), mMin);
-                    nMin = Math.Max(Convert.ToInt32(tmlNode.SelectSingleNode("ns:MinTileRow", xnm).InnerText), nMin);
-                    mMax = Math.Min(Convert.ToInt32(tmlNode.SelectSingleNode("ns:MaxTileCol", xnm).InnerText), mMax);
-                    nMax = Math.Min(Convert.ToInt32(tmlNode.SelectSingleNode("ns:MaxTileRow", xnm).InnerText), nMax);
-                    break;
+                    if (tmlNode.SelectSingleNode("ns:TileMatrix", xnm).InnerText == identifier)
+                    {
+                        mMin = Math.Max(Convert.ToInt32(tmlNode.SelectSingleNode("ns:MinTileCol", xnm).InnerText), mMin);
+                        nMin = Math.Max(Convert.ToInt32(tmlNode.SelectSingleNode("ns:MinTileRow", xnm).InnerText), nMin);
+                        mMax = Math.Min(Convert.ToInt32(tmlNode.SelectSingleNode("ns:MaxTileCol", xnm).InnerText), mMax);
+                        nMax = Math.Min(Convert.ToInt32(tmlNode.SelectSingleNode("ns:MaxTileRow", xnm).InnerText), nMax);
+                        break;
+                    }
                 }
+                result[0] = mMin;
+                result[1] = nMin;
+                result[2] = mMax;
+                result[3] = nMax;
             }
-            result[0] = mMin;
-            result[1] = nMin;
-            result[2] = mMax;
-            result[3] = nMax;
             return result;
         }
 
