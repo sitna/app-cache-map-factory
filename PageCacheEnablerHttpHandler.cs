@@ -29,12 +29,6 @@ namespace AppCacheFactory
                 mapDefKey = "map-def";
             }
 
-            string mapNameKey = WebConfigurationManager.AppSettings["AppCacheFactory.Keys.MapName"];
-            if (mapNameKey == null)
-            {
-                mapNameKey = "map-name";
-            }
-
             string targetUrl = WebConfigurationManager.AppSettings["AppCacheFactory.DefaultPage"];
             if (targetUrl == null)
             {
@@ -49,10 +43,8 @@ namespace AppCacheFactory
 
             #region eliminación de parámetros de querystring que están dirigidos a este handler
             Regex schemaRe = new Regex(mapDefKey + "=[^&]*", RegexOptions.IgnoreCase);
-            Regex nameRe = new Regex(mapNameKey + "=[^&]*", RegexOptions.IgnoreCase);
             string query = request.Url.Query
                 .Replace(schemaRe.Match(request.Url.Query).ToString(), "")
-                .Replace(nameRe.Match(request.Url.Query).ToString(), "")
                 .Replace("?&", "?")
                 .Replace("&&", "&");
             targetUrl += query + request.Url.Fragment;
